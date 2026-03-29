@@ -1,0 +1,27 @@
+<configuration>
+
+  <springProperty name="LOG_LEVEL_ROOT" source="logging.level.root" defaultValue="info" />
+
+  <appender name="JSONOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeMdcKeyName>client_ip</includeMdcKeyName>
+      <includeMdcKeyName>request_id</includeMdcKeyName>
+      <includeMdcKeyName>user_agent</includeMdcKeyName>
+      <includeMdcKeyName>method</includeMdcKeyName>
+      <includeMdcKeyName>referer</includeMdcKeyName>
+      <includeMdcKeyName>path</includeMdcKeyName>
+      <includeMdcKeyName>status</includeMdcKeyName>
+      <includeMdcKeyName>duration</includeMdcKeyName>
+<!--      <includeMdcKeyName>user</includeMdcKeyName>-->
+      <includeMdcKeyName>trace_id</includeMdcKeyName>
+      <includeMdcKeyName>msg_id</includeMdcKeyName>
+    </encoder>
+  </appender>
+
+  <!--   k8s 环境日志配置-->
+  <root level="${LOG_LEVEL_ROOT}">
+    <appender-ref ref="JSONOUT"/>
+  </root>
+
+
+</configuration>

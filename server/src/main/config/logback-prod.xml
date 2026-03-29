@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration scan="true" scanPeriod="5 seconds">
+
+  <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
+  <property name="log_pattern" value="%date %(${LOG_LEVEL_PATTERN:-%5p}) [%thread][%X{trace_id}][%X{tenantId}]  %logger{36} : %msg%n" />
+
+  <!--   本地启动时在当前目录打印日志-->
+  <springProfile name="local">
+    <springProperty scope="context" name="log_dir" source="log.path" defaultValue="logs"/>
+  </springProfile>
+  <!--  本地启动时在当前目录打印日志 -->
+  <springProfile name="!local">
+    <property name="log_dir" value="/mnt/app/logs/kkview" />
+  </springProfile>
+  <!-- 控制台打印 -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <charset>utf-8</charset>
+      <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+    </encoder>
+  </appender>
+
+  <!--获取比info级别高(包括info级别)-->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${log_dir}/kkview.log</file>
+    <encoder>
+      <charset>utf-8</charset>
+      <pattern>${log_pattern}</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${log_dir}/kkview.%d{yyyy-MM-dd_HH}.%i.log.gz
+      </fileNamePattern><!-- 每小时归档 -->
+      <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <!-- or whenever the file size reaches 100MB -->
+        <maxFileSize>100MB</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+      <maxHistory>720</maxHistory><!-- 日志存放周期小时(30天) -->
+    </rollingPolicy>
+  </appender>
+
+  <!-- 异步输出 -->
+  <appender name="ASYNC-INFO" class="ch.qos.logback.classic.AsyncAppender">
+    <!-- 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACT、DEBUG、INFO级别的日志 -->
+<!--    <discardingThreshold>20</discardingThreshold>-->
+    <!-- 更改默认的队列的深度,该值会影响性能.默认值为256 -->
+    <queueSize>512</queueSize>
+    <!-- 添加附加的appender,最多只能添加一个 -->
+    <appender-ref ref="FILE" />
+  </appender>
+
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE" />
+    <appender-ref ref="ASYNC-INFO" />
+  </root>
+
+
+</configuration>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在HTML中使用vue-office-excel</title>
+
+    <link rel="stylesheet" href="excel.css" />
+    <script src="excel.umd.js"></script>
+    <script src="../js/base64.min.js" type="text/javascript"></script>
+
+    <style>
+        /* 确保页面占满全屏 */
+        /*html, body {*/
+        /*    margin: 0;*/
+        /*    padding: 0;*/
+        /*    height: 100%;*/
+        /*    overflow: hidden; !* 避免页面整体滚动 *!*/
+        /*}*/
+
+    </style>
+</head>
+<body>
+<div id="excel" style="width: 100vw; height: 100vh"></div>
+
+<script>
+    // 如果jsPreviewExcel支持配置选项
+    const options = {
+        "minColLength": 20,
+        "minRowLength": 100,
+        "widthOffset": 10, //在默认渲染的列表宽度上再加10px宽
+        "heightOffset": 10, //在默认渲染的列表高度上再加10px高
+        "beforeTransformData": function (workbookData){
+            //修改workbookData，可以打印出来看看数据格式
+            return workbookData;
+        },
+        "transformData": function (workbookData){
+            //修改workbookData，可以打印出来看看数据格式
+            // return workbookData;
+            // console.log('workbookData', workbookData);
+            try {
+                // 遍历每个工作表对象
+                workbookData.forEach((sheet) => {
+                    // 遍历 styles 数组
+                    sheet.styles.forEach((style) => {
+                        // 尝试访问并修改 font.size 属性
+                        if (style.font && style.font.size) {
+                            // console.log('style.font.size=', style.font.size);
+                            // 将字体大小放大1.2倍，并四舍五入到整数
+                            style.font.size = Math.round(style.font.size * 1.2);
+                        }
+
+                        //如果不识别字体，包含  ?? 就默认使用宋体
+                        if(style.font && style.font.name && style.font.name.includes('??')){
+                            style.font.name = '宋体'
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error("调整字体size异常", error);
+            }
+            return workbookData;
+        }
+    };
+
+
+    const myExcelPreviewer = jsPreviewExcel.init(document.getElementById('excel'),options);
+
+    // 从 URL 中提取查询参数
+    const urlParams = new URLSearchParams(window.location.search);
+    pdfUrl = urlParams.get('file');
+
+
+    myExcelPreviewer.preview(pdfUrl).then(()=>{
+        console.log('预览完成');
+
+    }).catch(e=>{
+        console.log('预览失败', e);
+    })
+
+
+</script>
+</body>
+</html>

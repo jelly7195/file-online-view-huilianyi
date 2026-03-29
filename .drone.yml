@@ -1,0 +1,66 @@
+workspace:
+  base: /work
+ #和uri路径统一
+  path: src/code.huilianyi.com/huilianyi/file-online-view
+
+clone:
+  git:
+    image: plugins/git
+    depth: 1
+   #需要submodules才设置成true
+    recursive: true
+    tags: false
+    skip_verify: true
+
+pipeline:
+  build:
+    image: registry-vpc.huilianyi.com:5000/devops/docker-maven:3.5.3-alp
+    commands:
+      - bash /usr/local/bin/mvn-entrypoint.sh
+      - mvn -T 1C -Dmaven.test.skip=true -s /usr/share/maven/ref/settings-docker.xml package
+    volumes:
+      - /mnt/stagemavenio:/usr/share/maven/ref/repository
+
+  warupload:
+    image: registry-vpc.huilianyi.com:5000/devops/drone-ossservice:efd7a634b2
+    bucket: helios-code-registry
+    war_name: file-online-view.jar
+    kname: artifact
+    secrets: [ oss_access_key, oss_secret_key ]
+    when:
+      branch: [ dev,v4.4.0,release ]
+
+  publish:
+    image: plugins/docker:17
+    mirror: https://zon13xl6.mirror.aliyuncs.com
+   #确认修改提交的NameSpace
+    repo: registry-vpc.huilianyi.com:5000/huilianyi/file-online-view
+    registry: registry-vpc.huilianyi.com:5000
+    #dockerfile: src/main/docker/Dockerfile
+    dockerfile: Dockerfile
+   #POM_FINAL_NAME是target/下的打包文件
+    build_args:
+      - POM_FINAL_NAME=kkFileView.jar
+      - CI_PROJECT_NAME=${DRONE_REPO_NAME}.jar
+    storage_driver: overlay
+    tags:
+      - ${DRONE_COMMIT_SHA:0:10}
+    insecure: true
+    debug: false
+    custom_dns:
+      - 192.168.110.100
+
+  devdeploy:
+    image: peloton/drone-rancher
+    url: https://tc-rancher-vpc.huilianyi.com:8443
+    access_key: 182F26CEE1F18923E913
+    secret_key: ft9WUeMkgYdN3hHH5Z6Uaj1Wk7zH6jZ16tk1haUo
+    service: Default/file-online-view
+   #确认发布的镜像
+    docker_image: registry-vpc.huilianyi.com/huilianyi/file-online-view:${DRONE_COMMIT_SHA:0:10}
+    start_first: true
+    confirm: true
+    timeout: 1800
+    when:
+      branch: dev
+branches: [dev,v4.4.0,release]

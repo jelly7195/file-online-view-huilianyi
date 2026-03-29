@@ -1,0 +1,23 @@
+# 组织架构服务
+service:
+  hermes:
+    host: http://hermes:9527
+## oauth 认证授权
+security:
+  oauth2:
+    client:
+      access-token-uri: ${service.hermes.host}/oauth/token
+      #      client-id: implement-integration
+      #      client-secret: K2QzPPz3fqQNEnsbwupD1b1IDPPg0RfkdWalXysL7wd
+      client-id: jwt-implement-integration
+      client-secret: K2QzPPz3fqQNEnsbwupD1b1IDPPg0RfkdWalXysL7wd
+      authentication-scheme: form
+      grant-type: client_credentials
+      client-authentication-scheme: form
+    resource:
+      user-info-uri: ${service.hermes.host}/api/check_token
+    authorization:
+      check-token-access: ${service.hermes.host}/oauth/check_token
+
+logging:
+  config: classpath:logback-prod.xml

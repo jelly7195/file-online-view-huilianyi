@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel 文件预览</title>
+    <script src="lib/js/react.production.min.js"></script>
+    <script src="lib/js/react-dom.production.min.js"></script>
+    <script src="lib/js/rxjs.umd.min.js"></script>
+
+    <script src="lib/js/univer-presets.js"></script>
+
+    <script src="lib/js/preset-sheets-core.js"></script>
+    <script src="lib/js/preset-sheets-core-zh-CN.js"></script>
+    <link rel="stylesheet" href="lib/css/preset-sheets-core.css" />
+
+    <script src="lib/js/preset-sheets-drawing.js"></script>
+    <script src="lib/js/preset-sheets-drawing-zh-CN.js"></script>
+    <link rel="stylesheet" href="lib/css/preset-sheets-drawing.css" />
+
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-container {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .loading-overlay {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #333;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #4472C4;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="preview-container" id="app"></div>
+    <div class="loading-overlay" id="loading">
+        <div class="loading-progress"><div class="loading-progress-bar" id="loading-bar"></div></div>
+        <div id="loading-text">正在解析 Excel 文件，请稍候...</div>
+    </div>
+
+    <script>
+    const { createUniver } = UniverPresets;
+    const { LocaleType, mergeLocales } = UniverCore;
+    const { UniverSheetsCorePreset } = UniverPresetSheetsCore;
+    const { UniverSheetsDrawingPreset } = UniverPresetSheetsDrawing;
+
+    const drawingLocale = (typeof UniverPresetSheetsDrawingZhCN !== 'undefined') ? UniverPresetSheetsDrawingZhCN : {};
+
+    const { univerAPI } = createUniver({
+        locale: LocaleType.ZH_CN,
+        locales: {
+            [LocaleType.ZH_CN]: mergeLocales(UniverPresetSheetsCoreZhCN, drawingLocale),
+        },
+        presets: [
+            UniverSheetsCorePreset({ toolbar: false, formulaBar: false, contextMenu: false, sheets: { protectedRangeShadow: false } }),
+            UniverSheetsDrawingPreset(),
+        ],
+    });
+
+    function showLoading(show) {
+        document.getElementById('loading').classList.toggle('hidden', !show);
+    }
+
+    var fakeProgress = {
+        current: 0,
+        target: 0,
+        rafId: null,
+        lastTime: 0,
+    };
+
+    function renderBar() {
+        var bar = document.getElementById('loading-bar');
+        bar.style.width = Math.round(fakeProgress.current) + '%';
+    }
+
+    function tickProgress(now) {
+        if (!fakeProgress.lastTime) fakeProgress.lastTime = now;
+        var dt = (now - fakeProgress.lastTime) / 1000;
+        fakeProgress.lastTime = now;
+
+        var gap = fakeProgress.target - fakeProgress.current;
+        if (gap > 0.2) {
+            var speed = Math.max(0.5, gap * 0.3);
+            fakeProgress.current = Math.min(fakeProgress.current + speed * dt * 60, fakeProgress.target);
+        } else if (fakeProgress.current < fakeProgress.target) {
+            fakeProgress.current = fakeProgress.target;
+        }
+
+        renderBar();
+
+        if (fakeProgress.current < 100) {
+            fakeProgress.rafId = requestAnimationFrame(tickProgress);
+        }
+    }
+
+    function setProgressTarget(percent) {
+        fakeProgress.target = Math.min(percent, 100);
+        if (!fakeProgress.rafId) {
+            fakeProgress.lastTime = 0;
+            fakeProgress.rafId = requestAnimationFrame(tickProgress);
+        }
+    }
+
+    function finishProgress() {
+        fakeProgress.target = 100;
+        fakeProgress.current = 100;
+        renderBar();
+        if (fakeProgress.rafId) {
+            cancelAnimationFrame(fakeProgress.rafId);
+            fakeProgress.rafId = null;
+        }
+    }
+
+    function resetProgress() {
+        if (fakeProgress.rafId) {
+            cancelAnimationFrame(fakeProgress.rafId);
+            fakeProgress.rafId = null;
+        }
+        fakeProgress.current = 0;
+        fakeProgress.target = 0;
+        fakeProgress.lastTime = 0;
+        renderBar();
+    }
+
+    function showLoadingError(msg) {
+        if (fakeProgress.rafId) {
+            cancelAnimationFrame(fakeProgress.rafId);
+            fakeProgress.rafId = null;
+        }
+        document.getElementById('loading-bar').parentElement.style.display = 'none';
+        document.getElementById('loading-text').textContent = msg;
+    }
+
+    async function setWorkbookReadOnly(fWorkbook) {
+        try {
+            const perm = fWorkbook.getWorkbookPermission();
+            if (perm && perm.setPoint) {
+                const EditPoint = univerAPI.Enum.WorkbookPermissionPoint.Edit;
+                await perm.setPoint(EditPoint, false);
+                console.log('[只读] WorkbookPermission.Edit = false');
+            }
+        } catch (err) {
+            console.warn('[只读] WorkbookPermission 失败:', err);
+        }
+
+        try {
+            const sheets = fWorkbook.getSheets();
+            for (const sheet of sheets) {
+                const wsPerm = sheet.getWorksheetPermission();
+                if (wsPerm && wsPerm.protect) {
+                    await wsPerm.protect({});
+                    if (wsPerm.setPoint) {
+                        await wsPerm.setPoint(univerAPI.Enum.WorksheetPermissionPoint.Edit, false);
+                    }
+                }
+            }
+            console.log('[只读] 所有 Sheet 已设为受保护');
+        } catch (err) {
+            console.warn('[只读] Sheet 保护失败:', err);
+        }
+    }
+
+    async function insertImages(fWorkbook, imageDataList, sheetOrder) {
+        if (!imageDataList || imageDataList.length === 0) return;
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        for (const imgData of imageDataList) {
+            try {
+                const sheetId = sheetOrder[imgData.wsIndex];
+                if (!sheetId) continue;
+                const fSheet = fWorkbook.getSheetBySheetId(sheetId);
+                if (!fSheet) continue;
+
+                const imageSourceType = (univerAPI.Enum && univerAPI.Enum.ImageSourceType) ? univerAPI.Enum.ImageSourceType.URL : 1;
+                const image = await fSheet.newOverGridImage()
+                    .setSource(imgData.dataUrl, imageSourceType)
+                    .setColumn(imgData.col)
+                    .setRow(imgData.row)
+                    .setWidth(imgData.width)
+                    .setHeight(imgData.height)
+                    .buildAsync();
+                fSheet.insertImages([image]);
+            } catch (imgErr) {
+                console.warn('[主线程] 图片插入失败:', imgErr);
+            }
+        }
+    }
+
+    // ========== 通过 Web Worker 解析 Excel ==========
+
+    function parseInWorker(arrayBuffer, fileName) {
+        return new Promise(function (resolve, reject) {
+            var worker = new Worker('./excel-parser-worker.js');
+
+            worker.addEventListener('message', function (e) {
+                var msg = e.data;
+                if (msg.type === 'progress') {
+                    setProgressTarget(msg.percent);
+                } else if (msg.type === 'result') {
+                    console.log('[主线程] Worker 解析完成，解析器:', msg.parser, '耗时:', msg.elapsed, 'ms');
+                    worker.terminate();
+                    resolve(msg);
+                } else if (msg.type === 'error') {
+                    worker.terminate();
+                    reject(new Error(msg.message));
+                }
+            });
+
+            worker.addEventListener('error', function (err) {
+                worker.terminate();
+                reject(new Error('Worker 异常: ' + (err.message || '未知错误')));
+            });
+
+            worker.postMessage({
+                type: 'parse',
+                arrayBuffer: arrayBuffer,
+                fileName: fileName,
+                useLuckyExcel: true,
+            }, [arrayBuffer]);
+        });
+    }
+
+    // ========== 核心导入函数 ==========
+
+    async function importFile(arrayBuffer, fileName) {
+        showLoading(true);
+        resetProgress();
+        setProgressTarget(2);
+
+        try {
+            var result = await parseInWorker(arrayBuffer, fileName);
+
+            setProgressTarget(85);
+
+            var workbookData = result.workbookData;
+            if (workbookData.locale === 'zhCN') {
+                workbookData.locale = LocaleType.ZH_CN;
+            }
+
+            var fWorkbook = univerAPI.createWorkbook(workbookData);
+            await setWorkbookReadOnly(fWorkbook);
+
+            if (result.imageDataList && result.imageDataList.length > 0) {
+                setProgressTarget(92);
+                await insertImages(fWorkbook, result.imageDataList, workbookData.sheetOrder);
+            }
+            finishProgress();
+
+            console.log('[主线程] Excel 文件导入成功');
+            showLoading(false);
+        } catch (error) {
+            console.error('Excel 文件导入失败:', error);
+            alert('文件导入失败: ' + error.message);
+            showLoading(false);
+        }
+    }
+
+    // ========== 从 URL 参数加载文件 ==========
+
+    (async function () {
+        const params = new URLSearchParams(location.search);
+        const fileUrl = params.get('file');
+
+        if (!fileUrl) {
+            showLoadingError('缺少 url 参数，请在地址栏传入 ?url=文件地址');
+            return;
+        }
+
+        console.log('[预览] 文件地址:', fileUrl);
+        resetProgress();
+
+        try {
+            const response = await fetch(fileUrl);
+            if (!response.ok) throw new Error('文件下载失败: HTTP ' + response.status);
+            const arrayBuffer = await response.arrayBuffer();
+            const fileName = decodeURIComponent(fileUrl.split('/').pop().split('?')[0]) || 'preview.xlsx';
+
+            await importFile(arrayBuffer, fileName);
+        } catch (err) {
+            console.error('[预览] 加载失败:', err);
+            showLoadingError('文件加载失败: ' + err.message);
+        }
+    })();
+    </script>
+</body>
+
+</html>
