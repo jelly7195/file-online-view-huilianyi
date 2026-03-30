@@ -320,6 +320,10 @@ public class OnlinePreviewController {
                 sheetMeta.put("name", sheet.getSheetName());
                 sheetMeta.put("hiddenCols", new ArrayList<>(hiddenCols));
                 sheetMeta.put("hiddenRows", new ArrayList<>(hiddenRows));
+                boolean hiddenFlag = workbook.isSheetHidden(i) || workbook.isSheetVeryHidden(i);
+                String visibility = workbook.isSheetVeryHidden(i) ? "veryHidden" : (workbook.isSheetHidden(i) ? "hidden" : "visible");
+                sheetMeta.put("hidden", hiddenFlag);
+                sheetMeta.put("visibility", visibility);
                 sheets.add(sheetMeta);
             }
         } catch (Exception e) {

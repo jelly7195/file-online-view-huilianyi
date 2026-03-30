@@ -222,6 +222,8 @@
 
             try {
                 // 遍历每个工作表对象
+                const meta = window.__excelHiddenMeta;
+                const visibleSheets = [];
                 workbookData.forEach((sheet, sheetIndex) => {
                     // 遍历 styles 数组
                     if (sheet.styles && Array.isArray(sheet.styles)) {
@@ -240,14 +242,30 @@
                         });
                     }
 
+                    const sheetMeta = meta && meta.sheets && meta.sheets[sheetIndex] ? meta.sheets[sheetIndex] : null;
+                    const isHiddenSheet = sheetMeta && (sheetMeta.hidden === true || sheetMeta.visibility === 'hidden' || sheetMeta.visibility === 'veryHidden');
+                    if (isHiddenSheet) {
+                        return;
+                    }
+
                     const hiddenCols = getHiddenColIndexes(sheet, sheetIndex);
                     applyHiddenCols(sheet, hiddenCols);
 
                     const hiddenRows = getHiddenRowIndexes(sheet, sheetIndex);
                     applyHiddenRows(sheet, hiddenRows);
+
+                    visibleSheets.push(sheet);
                 });
             } catch (error) {
                 console.error("调整字体size异常", error);
+            }
+            // 如果过滤后仍有可见sheet，则只返回这些；否则返回原始数据避免崩溃
+            if (Array.isArray(workbookData) && workbookData.length > 0) {
+                const meta = window.__excelHiddenMeta;
+                const hasVisible = meta && meta.sheets ? meta.sheets.some((s) => !(s.hidden === true || s.visibility === 'hidden' || s.visibility === 'veryHidden')) : true;
+                if (hasVisible) {
+                    return (typeof visibleSheets !== 'undefined' && visibleSheets.length > 0) ? visibleSheets : workbookData;
+                }
             }
             return workbookData;
         }
@@ -285,6 +303,26 @@
     }).catch(() => {}).finally(() => {
         myExcelPreviewer.preview(pdfUrl).then(()=>{
             console.log('预览完成');
+            try {
+                const meta = window.__excelHiddenMeta;
+                if (meta && Array.isArray(meta.sheets)) {
+                    const hiddenNames = new Set(
+                        meta.sheets
+                            .filter((s) => s && (s.hidden === true || s.visibility === 'hidden' || s.visibility === 'veryHidden'))
+                            .map((s) => String(s.name || '').trim())
+                            .filter((s) => s.length > 0),
+                    );
+                    if (hiddenNames.size > 0) {
+                        const items = document.querySelectorAll('.x-spreadsheet-bottombar .x-spreadsheet-menu > li');
+                        items.forEach((li) => {
+                            const text = (li && li.textContent ? li.textContent : '').trim();
+                            if (hiddenNames.has(text)) {
+                                li.style.display = 'none';
+                            }
+                        });
+                    }
+                }
+            } catch (e) {}
         }).catch(e=>{
             console.log('预览失败', e);
         })
