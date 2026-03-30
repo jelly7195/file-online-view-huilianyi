@@ -51,9 +51,9 @@ public class ExcelFilePreviewImpl implements FilePreview {
 //        }
 
         //如果文件超过5M,则不支持预览
-        if(response.getSize() > 3 * 1024 * 1024){
-            return otherFilePreview.notSupportedFile(model, fileAttribute, "文件大小超过3M,不支持预览");
-        }
+        // if(response.getSize() > 3 * 1024 * 1024){
+        //     return otherFilePreview.notSupportedFile(model, fileAttribute, "文件大小超过3M,不支持预览");
+        // }
 
         String filePath = response.getContent();
 
