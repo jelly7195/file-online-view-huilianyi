@@ -461,10 +461,12 @@ public class FileHandlerService implements InitializingBean {
         String fullFileName = WebUtils.getUrlParameterReg(url, "fullfilename", "filename");
         String compressFileKey = WebUtils.getUrlParameterReg(url, "kkCompressfileKey"); //压缩包获取文件名
         String compressFilePath = WebUtils.getUrlParameterReg(url, "kkCompressfilepath"); //压缩包获取文件路径
+        boolean useCustomFileName = false; // 标记是否使用了自定义文件名
         if (StringUtils.hasText(fullFileName)) {
             originFileName = fullFileName;
             type = FileType.typeFromFileName(fullFileName);
             suffix = KkFileUtils.suffixFromFileName(fullFileName);
+            useCustomFileName = true; // 标记使用了自定义文件名
             // 移除fullfilename参数
             url = WebUtils.clearFullfilenameParam(url);
         } else {
@@ -487,7 +489,7 @@ public class FileHandlerService implements InitializingBean {
             } catch (UnsupportedEncodingException e) {
                 logger.error("文件decode错误：", e);
             }
-        }else {
+        }else if (!useCustomFileName) { // 只有在没有使用自定义文件名时才对URL进行编码
             url = WebUtils.encodeUrlFileName(url); //对未转义的url进行转义
         }
         originFileName = KkFileUtils.htmlEscape(originFileName);  //文件名处理

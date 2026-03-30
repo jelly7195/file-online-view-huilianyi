@@ -36,6 +36,7 @@
     <img src="images/sorry2.png"/>
     <span>
         The (${fileType}) file is not supported for online preview.
+        <p style="color: red;">${msg}</p>
     </span>
 </div>
 </body>
