@@ -22,8 +22,14 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTCol;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTCols;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -39,12 +45,17 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static cn.keking.service.FilePreview.PICTURE_FILE_PREVIEW_PAGE;
 
@@ -202,6 +213,121 @@ public class OnlinePreviewController {
                 IOUtils.closeQuietly(inputStream);
             }
         }
+    }
+
+    @GetMapping("/excelHiddenMeta")
+    @ResponseBody
+    public ReturnResponse<Object> excelHiddenMeta(String urlPath, FileAttribute fileAttribute) {
+        URL url;
+        try {
+            urlPath = WebUtils.decodeUrl(urlPath);
+            url = WebUtils.normalizedURL(urlPath);
+        } catch (Exception ex) {
+            logger.error(String.format(BASE64_DECODE_ERROR_MSG, urlPath), ex);
+            return ReturnResponse.failure("url参数解析失败");
+        }
+        if (urlPath == null) {
+            return ReturnResponse.failure("url为空");
+        }
+        if (!urlPath.toLowerCase().startsWith("http") && !urlPath.toLowerCase().startsWith("https") && !urlPath.toLowerCase().startsWith("ftp")) {
+            logger.info("读取跨域文件异常，可能存在非法访问，urlPath：{}", urlPath);
+            return ReturnResponse.failure("非法访问");
+        }
+
+        byte[] bytes = null;
+        if (!urlPath.toLowerCase().startsWith("ftp:")) {
+            factory.setConnectionRequestTimeout(2000);
+            factory.setConnectTimeout(10000);
+            factory.setReadTimeout(72000);
+            HttpClient httpClient = HttpClientBuilder.create().setRedirectStrategy(new DefaultRedirectStrategy()).build();
+            factory.setHttpClient(httpClient);
+            restTemplate.setRequestFactory(factory);
+            RequestCallback requestCallback = request -> {
+                request.getHeaders().setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL));
+                String proxyAuthorization = fileAttribute.getKkProxyAuthorization();
+                if (StringUtils.hasText(proxyAuthorization)) {
+                    Map<String, String> proxyAuthorizationMap = mapper.readValue(proxyAuthorization, Map.class);
+                    proxyAuthorizationMap.forEach((key, value) -> request.getHeaders().set(key, value));
+                }
+            };
+            try {
+                bytes = restTemplate.execute(url.toURI(), HttpMethod.GET, requestCallback, fileResponse -> IOUtils.toByteArray(fileResponse.getBody()));
+            } catch (Exception e) {
+                logger.error("读取文件异常，url：{}", urlPath, e);
+                return ReturnResponse.failure("读取文件失败");
+            }
+        } else {
+            try (InputStream inputStream = (url).openStream()) {
+                bytes = IOUtils.toByteArray(inputStream);
+            } catch (IOException e) {
+                logger.error("读取ftp文件异常，url：{}", urlPath, e);
+                return ReturnResponse.failure("读取文件失败");
+            }
+        }
+
+        if (bytes == null || bytes.length == 0) {
+            return ReturnResponse.failure("文件内容为空");
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> sheets = new ArrayList<>();
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+            int sheetCount = workbook.getNumberOfSheets();
+            for (int i = 0; i < sheetCount; i += 1) {
+                Sheet sheet = workbook.getSheetAt(i);
+                Set<Integer> hiddenCols = new HashSet<>();
+                Set<Integer> hiddenRows = new HashSet<>();
+                if (sheet instanceof XSSFSheet) {
+                    XSSFSheet xssfSheet = (XSSFSheet) sheet;
+                    List<CTCols> colsList = xssfSheet.getCTWorksheet().getColsList();
+                    for (CTCols cols : colsList) {
+                        for (CTCol col : cols.getColList()) {
+                            if (col.isSetHidden() && col.getHidden()) {
+                                long min = col.getMin();
+                                long max = col.getMax();
+                                for (long c = min; c <= max; c += 1) {
+                                    hiddenCols.add((int) c - 1);
+                                }
+                            }
+                        }
+                    }
+                    List<org.openxmlformats.schemas.spreadsheetml.x2006.main.CTRow> rowList = xssfSheet.getCTWorksheet().getSheetData().getRowList();
+                    for (org.openxmlformats.schemas.spreadsheetml.x2006.main.CTRow row : rowList) {
+                        if (row.isSetHidden() && row.getHidden()) {
+                            hiddenRows.add((int) row.getR() - 1);
+                        }
+                    }
+                } else {
+                    int maxCol = 0;
+                    int firstRow = sheet.getFirstRowNum();
+                    int lastRow = sheet.getLastRowNum();
+                    int limit = Math.min(lastRow, firstRow + 200);
+                    for (int r = firstRow; r <= limit; r += 1) {
+                        if (sheet.getRow(r) == null) continue;
+                        short lastCellNum = sheet.getRow(r).getLastCellNum();
+                        if (lastCellNum > maxCol) maxCol = lastCellNum;
+                    }
+                    for (int c = 0; c < maxCol; c += 1) {
+                        if (sheet.isColumnHidden(c)) hiddenCols.add(c);
+                    }
+                    for (int r = firstRow; r <= lastRow; r += 1) {
+                        if (sheet.getRow(r) == null) continue;
+                        if (sheet.getRow(r).getZeroHeight()) hiddenRows.add(r);
+                    }
+                }
+                Map<String, Object> sheetMeta = new HashMap<>();
+                sheetMeta.put("index", i);
+                sheetMeta.put("name", sheet.getSheetName());
+                sheetMeta.put("hiddenCols", new ArrayList<>(hiddenCols));
+                sheetMeta.put("hiddenRows", new ArrayList<>(hiddenRows));
+                sheets.add(sheetMeta);
+            }
+        } catch (Exception e) {
+            logger.error("解析excel隐藏列异常，url：{}", urlPath, e);
+            return ReturnResponse.failure("解析excel失败");
+        }
+        result.put("sheets", sheets);
+        return ReturnResponse.success(result);
     }
 
     private boolean isPdf(@NonNull URL url) {

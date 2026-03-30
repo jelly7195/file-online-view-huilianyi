@@ -38,23 +38,213 @@
             //修改workbookData，可以打印出来看看数据格式
             // return workbookData;
             // console.log('workbookData', workbookData);
+            const getHiddenRowIndexes = (sheet, sheetIndex) => {
+                const result = new Set();
+                const config = sheet && sheet.config;
+                const rowhidden = config && (config.rowhidden || config.rowHidden || config.rowHiddenData);
+                if (rowhidden && typeof rowhidden === 'object' && !Array.isArray(rowhidden)) {
+                    Object.keys(rowhidden).forEach((k) => {
+                        const n = Number(k);
+                        if (Number.isInteger(n)) result.add(n);
+                    });
+                }
+
+                const rows = sheet && sheet.rows;
+                if (Array.isArray(rows)) {
+                    rows.forEach((row, idx) => {
+                        if (row && (row.hidden === true || row.hide === true || row.hid === true || row.h === 0 || row.height === 0)) result.add(idx);
+                    });
+                }
+
+                const hiddenRowsArr = sheet && (sheet.hiddenRows || sheet.hiddenRowIndexes);
+                if (Array.isArray(hiddenRowsArr)) {
+                    hiddenRowsArr.forEach((r) => {
+                        const n = Number(r);
+                        if (Number.isInteger(n)) result.add(n);
+                    });
+                }
+
+                const meta = window.__excelHiddenMeta;
+                if (meta && meta.sheets && meta.sheets[sheetIndex] && Array.isArray(meta.sheets[sheetIndex].hiddenRows)) {
+                    meta.sheets[sheetIndex].hiddenRows.forEach((r) => {
+                        const n = Number(r);
+                        if (Number.isInteger(n)) result.add(n);
+                    });
+                }
+
+                return Array.from(result).sort((a, b) => a - b);
+            };
+
+            const applyHiddenRows = (sheet, hiddenRows) => {
+                if (!hiddenRows || hiddenRows.length === 0) return;
+                if (!sheet.config) sheet.config = {};
+                if (!sheet.config.rowhidden) sheet.config.rowhidden = {};
+                hiddenRows.forEach((r) => {
+                    sheet.config.rowhidden[r] = 1;
+                });
+
+                const rowlen = sheet.config.rowlen;
+                if (rowlen && typeof rowlen === 'object') {
+                    hiddenRows.forEach((r) => {
+                        rowlen[r] = 0;
+                    });
+                }
+
+                const rowlen2 = sheet.rowlen;
+                if (rowlen2 && typeof rowlen2 === 'object') {
+                    hiddenRows.forEach((r) => {
+                        rowlen2[r] = 0;
+                    });
+                }
+
+                const rows = sheet.rows;
+                if (Array.isArray(rows)) {
+                    hiddenRows.forEach((r) => {
+                        if (!rows[r]) return;
+                        rows[r].h = 0;
+                        rows[r].height = 0;
+                        rows[r].hidden = true;
+                    });
+                }
+                if (rows && !Array.isArray(rows) && typeof rows === 'object') {
+                    hiddenRows.forEach((r) => {
+                        const existing = rows[r] && typeof rows[r] === 'object' ? rows[r] : {};
+                        rows[r] = Object.assign({}, existing, { h: 0, height: 0, hidden: true, hide: true });
+                    });
+                }
+            };
+
+            const getHiddenColIndexes = (sheet, sheetIndex) => {
+                const result = new Set();
+                const config = sheet && sheet.config;
+                const colhidden = config && (config.colhidden || config.colHidden || config.columnHidden);
+                if (colhidden && typeof colhidden === 'object' && !Array.isArray(colhidden)) {
+                    Object.keys(colhidden).forEach((k) => {
+                        const n = Number(k);
+                        if (Number.isInteger(n)) result.add(n);
+                    });
+                }
+                const colsFromSheetJs = sheet && sheet["!cols"];
+                if (Array.isArray(colsFromSheetJs)) {
+                    colsFromSheetJs.forEach((col, idx) => {
+                        if (col && (col.hidden === true || col.hide === true || col.hid === true)) result.add(idx);
+                    });
+                }
+                const cols = sheet && sheet.cols;
+                if (Array.isArray(cols)) {
+                    cols.forEach((col, idx) => {
+                        if (col && (col.hidden === true || col.hide === true || col.hid === true)) result.add(idx);
+                    });
+                }
+                const hiddenColsArr = sheet && (sheet.hiddenCols || sheet.hiddenColumns);
+                if (Array.isArray(hiddenColsArr)) {
+                    hiddenColsArr.forEach((c) => {
+                        const n = Number(c);
+                        if (Number.isInteger(n)) result.add(n);
+                    });
+                }
+
+                const meta = window.__excelHiddenMeta;
+                if (meta && meta.sheets && meta.sheets[sheetIndex] && Array.isArray(meta.sheets[sheetIndex].hiddenCols)) {
+                    meta.sheets[sheetIndex].hiddenCols.forEach((c) => {
+                        const n = Number(c);
+                        if (Number.isInteger(n)) result.add(n);
+                    });
+                }
+
+                return Array.from(result).sort((a, b) => a - b);
+            };
+
+            const applyHiddenCols = (sheet, hiddenCols) => {
+                if (!hiddenCols || hiddenCols.length === 0) return;
+                if (!sheet.config) sheet.config = {};
+                if (!sheet.config.colhidden) sheet.config.colhidden = {};
+                hiddenCols.forEach((c) => {
+                    sheet.config.colhidden[c] = 1;
+                });
+
+                const columnlen = sheet.config.columnlen;
+                if (columnlen && typeof columnlen === 'object') {
+                    hiddenCols.forEach((c) => {
+                        columnlen[c] = 0;
+                    });
+                }
+
+                const columnlen2 = sheet.columnlen;
+                if (columnlen2 && typeof columnlen2 === 'object') {
+                    hiddenCols.forEach((c) => {
+                        columnlen2[c] = 0;
+                    });
+                }
+
+                const cols = sheet.cols;
+                if (Array.isArray(cols)) {
+                    hiddenCols.forEach((c) => {
+                        if (!cols[c]) return;
+                        cols[c].w = 0;
+                        cols[c].width = 0;
+                        cols[c].hidden = true;
+                    });
+                }
+                if (cols && !Array.isArray(cols) && typeof cols === 'object') {
+                    hiddenCols.forEach((c) => {
+                        const existing = cols[c] && typeof cols[c] === 'object' ? cols[c] : {};
+                        cols[c] = Object.assign({}, existing, { w: 0, width: 0, hidden: true, hide: true });
+                    });
+                }
+
+                const colsFromSheetJs = sheet["!cols"];
+                if (Array.isArray(colsFromSheetJs)) {
+                    hiddenCols.forEach((c) => {
+                        if (!colsFromSheetJs[c]) colsFromSheetJs[c] = {};
+                        colsFromSheetJs[c].wpx = 0;
+                        colsFromSheetJs[c].wch = 0;
+                        colsFromSheetJs[c].hidden = true;
+                    });
+                }
+
+                const columns = sheet.columns;
+                if (Array.isArray(columns)) {
+                    hiddenCols.forEach((c) => {
+                        if (!columns[c]) return;
+                        columns[c].w = 0;
+                        columns[c].width = 0;
+                        columns[c].hidden = true;
+                    });
+                }
+                if (columns && !Array.isArray(columns) && typeof columns === 'object') {
+                    hiddenCols.forEach((c) => {
+                        const existing = columns[c] && typeof columns[c] === 'object' ? columns[c] : {};
+                        columns[c] = Object.assign({}, existing, { w: 0, width: 0, hidden: true, hide: true });
+                    });
+                }
+            };
+
             try {
                 // 遍历每个工作表对象
-                workbookData.forEach((sheet) => {
+                workbookData.forEach((sheet, sheetIndex) => {
                     // 遍历 styles 数组
-                    sheet.styles.forEach((style) => {
-                        // 尝试访问并修改 font.size 属性
-                        if (style.font && style.font.size) {
-                            // console.log('style.font.size=', style.font.size);
-                            // 将字体大小放大1.2倍，并四舍五入到整数
-                            style.font.size = Math.round(style.font.size * 1.2);
-                        }
+                    if (sheet.styles && Array.isArray(sheet.styles)) {
+                        sheet.styles.forEach((style) => {
+                            // 尝试访问并修改 font.size 属性
+                            if (style.font && style.font.size) {
+                                // console.log('style.font.size=', style.font.size);
+                                // 将字体大小放大1.2倍，并四舍五入到整数
+                                style.font.size = Math.round(style.font.size * 1.2);
+                            }
 
-                        //如果不识别字体，包含  ?? 就默认使用宋体
-                        if(style.font && style.font.name && style.font.name.includes('??')){
-                            style.font.name = '宋体'
-                        }
-                    });
+                            //如果不识别字体，包含  ?? 就默认使用宋体
+                            if(style.font && style.font.name && style.font.name.includes('??')){
+                                style.font.name = '宋体'
+                            }
+                        });
+                    }
+
+                    const hiddenCols = getHiddenColIndexes(sheet, sheetIndex);
+                    applyHiddenCols(sheet, hiddenCols);
+
+                    const hiddenRows = getHiddenRowIndexes(sheet, sheetIndex);
+                    applyHiddenRows(sheet, hiddenRows);
                 });
             } catch (error) {
                 console.error("调整字体size异常", error);
@@ -70,13 +260,35 @@
     const urlParams = new URLSearchParams(window.location.search);
     pdfUrl = urlParams.get('file');
 
+    const extractOriginalFileUrl = (fileUrl) => {
+        try {
+            const u = new URL(fileUrl, window.location.href);
+            const urlPath = u.searchParams.get('urlPath');
+            if (u.pathname.includes('/getCorsFile') && urlPath) {
+                return Base64.decode(decodeURIComponent(urlPath));
+            }
+        } catch (e) {}
+        return fileUrl;
+    };
 
-    myExcelPreviewer.preview(pdfUrl).then(()=>{
-        console.log('预览完成');
+    const fetchHiddenMeta = async () => {
+        const originalFileUrl = extractOriginalFileUrl(pdfUrl);
+        const metaUrl = "../excelHiddenMeta?urlPath=" + encodeURIComponent(Base64.encode(originalFileUrl));
+        const resp = await fetch(metaUrl, { credentials: 'same-origin' });
+        const json = await resp.json();
+        if (json && json.code === 0 && json.content) return json.content;
+        return null;
+    };
 
-    }).catch(e=>{
-        console.log('预览失败', e);
-    })
+    fetchHiddenMeta().then((meta) => {
+        if (meta) window.__excelHiddenMeta = meta;
+    }).catch(() => {}).finally(() => {
+        myExcelPreviewer.preview(pdfUrl).then(()=>{
+            console.log('预览完成');
+        }).catch(e=>{
+            console.log('预览失败', e);
+        })
+    });
 
 
 </script>
