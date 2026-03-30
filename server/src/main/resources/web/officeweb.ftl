@@ -76,7 +76,7 @@
         window.location.href=test;
     }
     var url = '${finalUrl}';
-    var baseUrl = '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';
+    var baseUrl = window.location.origin ? window.location.origin + '/kkview/' : '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';;
     if (!url.startsWith(baseUrl)) {
         url = baseUrl + 'getCorsFile?urlPath=' + encodeURIComponent(Base64.encode(url));
     }
@@ -98,7 +98,7 @@
             window.luckysheet.destroy();
             window.luckysheet.create({
                 container: 'luckysheet', //luckysheet is the container id
-                lang: "zh",
+                lang: "en",
                 showtoolbarConfig:{
                     image: false,//插入图片
                     print: false, //关闭打印按钮  启用也不能用 等以后看情况而定

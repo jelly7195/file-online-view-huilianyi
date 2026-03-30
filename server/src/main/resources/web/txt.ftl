@@ -212,11 +212,11 @@
             strDisplayPagenation="";
             if(currentPage && currentPage !=1)
             {
-                strDisplayPagenation+='<button class="btn btn-secondary btn-sm mr-1" onclick="DHTMLpagenation.previous()">上一页</button>';
+                strDisplayPagenation+='<button class="btn btn-secondary btn-sm mr-1" onclick="DHTMLpagenation.previous()">Previous page</button>';
             }
             else
             {
-                strDisplayPagenation+="<span class='text-muted'>上一页</span>  ";
+                strDisplayPagenation+="<span class='text-muted'>Previous page</span>  ";
             }
 
             for(var i=1;i<=pageSizeCount;i++)
@@ -233,13 +233,13 @@
 
             if(currentPage && currentPage!=pageSizeCount)
             {
-                strDisplayPagenation+='<button class="btn btn-secondary btn-sm mr-1" onclick="DHTMLpagenation.next()">下一页</button>';
+                strDisplayPagenation+='<button class="btn btn-secondary btn-sm mr-1" onclick="DHTMLpagenation.next()">Next page</button>';
             }
             else
             {
-                strDisplayPagenation+="<span class='text-muted'>下一页</span>  ";
+                strDisplayPagenation+="<span class='text-muted'>Next page</span>  ";
             }
-            strDisplayPagenation+="共 " + pageSizeCount + " 页。<br>每页" + perpageLength + " 字符，调整字符数：<input type='text' class='form-control d-inline w-auto' value='"+perpageLength+"' id='ctlPerpageLength' /><input type='button' class='btn btn-primary btn-sm ml-1' value='确定' onclick='DHTMLpagenation.change()' />";
+            strDisplayPagenation+="Total " + pageSizeCount + " page";
             divDisplayPagenation.innerHTML=strDisplayPagenation;
         };
 

@@ -12,7 +12,7 @@
   </springProfile>
   <!--  本地启动时在当前目录打印日志 -->
   <springProfile name="!local">
-    <property name="log_dir" value="/mnt/app/logs/kkview" />
+    <property name="log_dir" value="./logs" />
   </springProfile>
   <!-- 控制台打印 -->
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

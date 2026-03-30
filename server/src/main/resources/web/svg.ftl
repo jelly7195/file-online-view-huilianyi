@@ -20,7 +20,7 @@
 <script type="text/javascript">
 
 	var url = '${finalUrl}';
-    var baseUrl = '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';
+    var baseUrl = window.location.origin ? window.location.origin + '/kkview/' : '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';;
     if (!url.startsWith(baseUrl)) {
         url = baseUrl + 'getCorsFile?urlPath=' + encodeURIComponent(Base64.encode(url));
     }

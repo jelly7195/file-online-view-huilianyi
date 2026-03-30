@@ -25,12 +25,12 @@
 
     var pdfUrl = '${pdfUrl}';
 
-    var baseUrl = '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';
+    var baseUrl = window.location.origin ? window.location.origin + '/kkview/' : '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';;
     if (!pdfUrl.startsWith(baseUrl)) {
         pdfUrl = baseUrl + 'getCorsFile?urlPath=' + encodeURIComponent(Base64.encode(pdfUrl));
     }
 
-    document.getElementsByTagName('iframe')[0].src =  "${baseUrl}univer/index.html?file="+encodeURIComponent(pdfUrl);
+    document.getElementsByTagName('iframe')[0].src =  "${baseUrl}vue-office/index.html?file="+encodeURIComponent(pdfUrl);
     document.getElementsByTagName('iframe')[0].height = document.documentElement.clientHeight - 10;
 
     /**

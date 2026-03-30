@@ -88,7 +88,7 @@
 <script>
     var resultData = {
         "code": 1,
-        "name": "PPT预览",
+        "name": "PPT Preview",
         "totalSize": ${imgUrls ? size},
         "curPage": 1,
         "totalPage": 1,

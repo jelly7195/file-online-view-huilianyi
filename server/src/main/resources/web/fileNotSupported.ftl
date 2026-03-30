@@ -35,8 +35,7 @@
 <div class="container">
     <img src="images/sorry2.png"/>
     <span>
-        该(${fileType})文件，系统暂不支持在线预览，原因如下：
-        <p style="color: red;">${msg}</p>
+        The (${fileType}) file is not supported for online preview.
     </span>
 </div>
 </body>

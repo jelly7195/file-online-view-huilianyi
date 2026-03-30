@@ -32,7 +32,7 @@
             <#--console.log("图片index: " + `${img_index}`);-->
 
 
-            var baseUrl = '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';
+            var baseUrl = window.location.origin ? window.location.origin + '/kkview/' : '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';;
             if (!pdfUrl.startsWith(baseUrl)) {
                 // console.log("跨域: " + pdfUrl);
                 pdfUrl = baseUrl + 'getCorsFile?urlPath=' + encodeURIComponent(Base64.encode(pdfUrl));
