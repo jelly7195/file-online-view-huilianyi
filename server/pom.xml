@@ -354,7 +354,6 @@
     </dependencies>
 
     <build>
-        <finalName>file-online-view</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
