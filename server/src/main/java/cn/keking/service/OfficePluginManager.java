@@ -55,9 +55,6 @@ public class OfficePluginManager {
     @Value("${office.plugin.task.maxtasksperprocess:5}")
     private int maxTasksPerProcess;
 
-    @Value("${office.plugin.memory.limit:512}")
-    private int officeMemoryLimit;
-
     @Autowired
     private LocalOfficeUtils localOfficeUtils;
 
@@ -77,11 +74,6 @@ public class OfficePluginManager {
             logger.warn("检测到有正在运行的office进程，已自动结束该进程");
         }
         try {
-            // 设置LibreOffice内存限制环境变量
-            String memPercent = String.valueOf(officeMemoryLimit);
-            System.setProperty("SAL_USE_INTEGRAL_BOUNDS", "1");
-            System.setProperty("SAL_MEMPERCENT", memPercent);
-
             String[] portsString = serverPorts.split(",");
             int[] ports = Arrays.stream(portsString).mapToInt(Integer::parseInt).toArray();
             long timeout = DurationStyle.detectAndParse(timeOut).toMillis();
