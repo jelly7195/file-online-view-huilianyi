@@ -1,6 +1,7 @@
 package cn.keking.web.controller;
 
 import cn.keking.model.FileAttribute;
+import cn.keking.model.FileType;
 import cn.keking.model.ReturnResponse;
 import cn.keking.service.FileHandlerService;
 import cn.keking.service.FilePreview;
@@ -89,6 +90,10 @@ public class OnlinePreviewController {
         String fileUrl;
         try {
             fileUrl = WebUtils.decodeUrl(url);
+            String fullFileName = WebUtils.getUrlParameterReg(fileUrl, "fullfilename", "filename");
+            if (StringUtils.hasText(fullFileName)) {
+                fileUrl = WebUtils.clearFullfilenameParam(fileUrl);
+            }
         } catch (Exception ex) {
             String errorMsg = String.format(BASE64_DECODE_ERROR_MSG, "url");
             return otherFilePreview.notSupportedFile(model, errorMsg);
@@ -113,6 +118,10 @@ public class OnlinePreviewController {
             fileUrls = WebUtils.decodeUrl(urls);
             // 防止XSS攻击
             fileUrls = KkFileUtils.htmlEscape(fileUrls);
+            String fullFileName = WebUtils.getUrlParameterReg(fileUrls, "fullfilename", "filename");
+            if (StringUtils.hasText(fullFileName)) {
+                fileUrls = WebUtils.clearFullfilenameParam(fileUrls);
+            }
         } catch (Exception ex) {
             String errorMsg = String.format(BASE64_DECODE_ERROR_MSG, "urls");
             return otherFilePreview.notSupportedFile(model, errorMsg);
@@ -145,6 +154,10 @@ public class OnlinePreviewController {
         URL url;
         try {
             urlPath = WebUtils.decodeUrl(urlPath);
+            String fullFileName = WebUtils.getUrlParameterReg(urlPath, "fullfilename", "filename");
+            if (StringUtils.hasText(fullFileName)) {
+                urlPath = WebUtils.clearFullfilenameParam(urlPath);
+            }
             url = WebUtils.normalizedURL(urlPath);
         } catch (Exception ex) {
             logger.error(String.format(BASE64_DECODE_ERROR_MSG, urlPath),ex);
@@ -221,6 +234,10 @@ public class OnlinePreviewController {
         URL url;
         try {
             urlPath = WebUtils.decodeUrl(urlPath);
+            String fullFileName = WebUtils.getUrlParameterReg(urlPath, "fullfilename", "filename");
+            if (StringUtils.hasText(fullFileName)) {
+                urlPath = WebUtils.clearFullfilenameParam(urlPath);
+            }
             url = WebUtils.normalizedURL(urlPath);
         } catch (Exception ex) {
             logger.error(String.format(BASE64_DECODE_ERROR_MSG, urlPath), ex);
@@ -233,7 +250,6 @@ public class OnlinePreviewController {
             logger.info("读取跨域文件异常，可能存在非法访问，urlPath：{}", urlPath);
             return ReturnResponse.failure("非法访问");
         }
-
         byte[] bytes = null;
         if (!urlPath.toLowerCase().startsWith("ftp:")) {
             factory.setConnectionRequestTimeout(2000);
@@ -358,6 +374,10 @@ public class OnlinePreviewController {
         try {
 //            fileUrl = WebUtils.decodeUrl(url);
             fileUrl = new String(Base64Utils.decodeFromString(url), "UTF-8");
+            String fullFileName = WebUtils.getUrlParameterReg(fileUrl, "fullfilename", "filename");
+            if (StringUtils.hasText(fullFileName)) {
+                fileUrl = WebUtils.clearFullfilenameParam(fileUrl);
+            }
         } catch (Exception ex) {
             String errorMsg = String.format(BASE64_DECODE_ERROR_MSG, "url");
             return ReturnResponse.failure(errorMsg);
