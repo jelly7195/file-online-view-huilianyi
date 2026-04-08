@@ -48,8 +48,7 @@ public class BaseUrlFilter implements Filter {
             baseUrl = configBaseUrl;
         } else {
             //3、默认动态拼接 baseUrl
-            baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort()
-                    + servletRequest.getContextPath() + "/";
+            baseUrl = "https://" + request.getServerName() + servletRequest.getContextPath() + "/";
         }
 
         if (!baseUrl.endsWith("/")) {
