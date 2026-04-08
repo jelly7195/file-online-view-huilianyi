@@ -219,15 +219,33 @@
                 strDisplayPagenation+="<span class='text-muted'>Previous page</span>  ";
             }
 
-            for(var i=1;i<=pageSizeCount;i++)
+            var pages = [];
+            if (pageSizeCount <= 7) {
+                for (var i = 1; i <= pageSizeCount; i++) pages.push(i);
+            } else {
+                if (currentPage <= 4) {
+                    pages = [1, 2, 3, 4, 5, '...', pageSizeCount];
+                } else if (currentPage >= pageSizeCount - 3) {
+                    pages = [1, '...', pageSizeCount - 4, pageSizeCount - 3, pageSizeCount - 2, pageSizeCount - 1, pageSizeCount];
+                } else {
+                    pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', pageSizeCount];
+                }
+            }
+
+            for(var i=0; i<pages.length; i++)
             {
-                if(i!=currentPage)
+                var page = pages[i];
+                if(page === '...')
                 {
-                    strDisplayPagenation+='<button class="btn btn-outline-primary btn-sm mr-1" onclick="DHTMLpagenation.goto('+i+');">'+i+'</button>';
+                    strDisplayPagenation+='<span class="text-muted mr-1">...</span>';
+                }
+                else if(page != currentPage)
+                {
+                    strDisplayPagenation+='<button class="btn btn-outline-primary btn-sm mr-1" onclick="DHTMLpagenation.goto('+page+');">'+page+'</button>';
                 }
                 else
                 {
-                    strDisplayPagenation+='<span class="btn btn-primary btn-sm mr-1">'+i+'</span>  ';
+                    strDisplayPagenation+='<span class="btn btn-primary btn-sm mr-1">'+page+'</span>  ';
                 }
             }
 
