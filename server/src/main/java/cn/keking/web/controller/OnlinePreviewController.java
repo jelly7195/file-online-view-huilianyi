@@ -90,10 +90,6 @@ public class OnlinePreviewController {
         String fileUrl;
         try {
             fileUrl = WebUtils.decodeUrl(url);
-            String fullFileName = WebUtils.getUrlParameterReg(fileUrl, "fullfilename", "filename");
-            if (StringUtils.hasText(fullFileName)) {
-                fileUrl = WebUtils.clearFullfilenameParam(fileUrl);
-            }
         } catch (Exception ex) {
             String errorMsg = String.format(BASE64_DECODE_ERROR_MSG, "url");
             return otherFilePreview.notSupportedFile(model, errorMsg);
