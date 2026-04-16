@@ -377,7 +377,7 @@
                 document.getElementById('loading-overlay').classList.add('hidden');
             }).catch(e=>{
                 console.log('Preview failed', e);
-                document.getElementById('loading-overlay').querySelector('.loading-text').innerText = 'Preview failed, please try again';
+                document.getElementById('loading-overlay').querySelector('.loading-text').innerText = 'Preview failed, please download instead.';
                 document.getElementById('loading-overlay').querySelector('.spinner').style.display = 'none';
             })
         });
@@ -388,7 +388,7 @@
             document.getElementById('loading-overlay').classList.add('hidden');
         }).catch(err => {
             console.log('Preview failed', err);
-            document.getElementById('loading-overlay').querySelector('.loading-text').innerText = 'File download and preview failed';
+            document.getElementById('loading-overlay').querySelector('.loading-text').innerText = 'File download and preview failed, please download instead.';
             document.getElementById('loading-overlay').querySelector('.spinner').style.display = 'none';
         });
     });
