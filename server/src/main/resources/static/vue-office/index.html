@@ -345,6 +345,24 @@
         return null;
     };
 
+    const removeContextMenus = () => {
+        const menus = document.querySelectorAll('.x-spreadsheet-contextmenu');
+        menus.forEach((el) => el.remove());
+    };
+
+    const installContextMenuBlocker = () => {
+        const styleId = '__disable_x_spreadsheet_contextmenu';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = '.x-spreadsheet-contextmenu{display:none!important;}';
+            document.head.appendChild(style);
+        }
+        removeContextMenus();
+        const observer = new MutationObserver(() => removeContextMenus());
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
     // 先下载文件到内存，避免一次性URL被后端excelHiddenMeta消耗导致前端下载到0字节文件(Corrupted zip错误)
     fetch(pdfUrl).then(res => res.arrayBuffer()).then(buffer => {
         fetchHiddenMeta().then((meta) => {
@@ -352,6 +370,7 @@
         }).catch(() => {}).finally(() => {
             myExcelPreviewer.preview(buffer).then(()=>{
                 console.log('预览完成');
+                installContextMenuBlocker();
                 try {
                     const meta = window.__excelHiddenMeta;
                     if (meta && Array.isArray(meta.sheets)) {
@@ -385,6 +404,7 @@
         console.error('Failed to download file', e);
         // 如果下载失败，尝试降级直接使用原始URL预览
         myExcelPreviewer.preview(pdfUrl).then(() => {
+            installContextMenuBlocker();
             document.getElementById('loading-overlay').classList.add('hidden');
         }).catch(err => {
             console.log('Preview failed', err);
