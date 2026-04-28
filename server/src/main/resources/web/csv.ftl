@@ -16,6 +16,9 @@
         .x-spreadsheet-icon {
             display: none !important;
         }
+        .x-spreadsheet-contextmenu {
+            display: none !important;
+        }
     </style>
 </head>
 <#if csvUrl?contains("http://") || csvUrl?contains("https://")>
@@ -40,6 +43,29 @@
     };
     //加载表格
     var xspr = x_spreadsheet(HTMLOUT,options);
+    (function () {
+        function inBottomBar(target) {
+            var el = target;
+            while (el && el !== HTMLOUT && el.nodeType === 1) {
+                if (el.classList && el.classList.contains('x-spreadsheet-bottombar')) return true;
+                el = el.parentNode;
+            }
+            return false;
+        }
+        HTMLOUT.addEventListener('contextmenu', function (e) {
+            if (inBottomBar(e.target)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+        HTMLOUT.addEventListener('mousedown', function (e) {
+            if (e.button === 2 && inBottomBar(e.target)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+    })();
     // HTMLOUT.style.height = (window.innerHeight - 400) + "px";
     // HTMLOUT.style.width = (window.innerWidth - 50) + "px";
 
