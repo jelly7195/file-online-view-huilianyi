@@ -350,6 +350,27 @@
         menus.forEach((el) => el.remove());
     };
 
+    const installSheetRenameBlocker = () => {
+        if (window.__disable_sheet_rename_installed) return;
+        window.__disable_sheet_rename_installed = true;
+        const isSheetTab = (target) => {
+            if (!target || !target.closest) return false;
+            return !!target.closest('.x-spreadsheet-bottombar .x-spreadsheet-menu > li');
+        };
+        const stop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            return false;
+        };
+        document.addEventListener('dblclick', (e) => {
+            if (isSheetTab(e.target)) return stop(e);
+        }, true);
+        document.addEventListener('mousedown', (e) => {
+            if (e.detail > 1 && isSheetTab(e.target)) return stop(e);
+        }, true);
+    };
+
     const installContextMenuBlocker = () => {
         const styleId = '__disable_x_spreadsheet_contextmenu';
         if (!document.getElementById(styleId)) {
@@ -371,6 +392,7 @@
             myExcelPreviewer.preview(buffer).then(()=>{
                 console.log('预览完成');
                 installContextMenuBlocker();
+                installSheetRenameBlocker();
                 try {
                     const meta = window.__excelHiddenMeta;
                     if (meta && Array.isArray(meta.sheets)) {
@@ -405,6 +427,7 @@
         // 如果下载失败，尝试降级直接使用原始URL预览
         myExcelPreviewer.preview(pdfUrl).then(() => {
             installContextMenuBlocker();
+            installSheetRenameBlocker();
             document.getElementById('loading-overlay').classList.add('hidden');
         }).catch(err => {
             console.log('Preview failed', err);

@@ -19,6 +19,13 @@
         .x-spreadsheet-contextmenu {
             display: none !important;
         }
+        /* 禁用底部 sheet 的双击及选中 */
+        .x-spreadsheet-bottombar {
+            pointer-events: none;
+        }
+        .x-spreadsheet-bottombar * {
+            pointer-events: none;
+        }
     </style>
 </head>
 <#if csvUrl?contains("http://") || csvUrl?contains("https://")>
@@ -63,6 +70,13 @@
             if (e.button === 2 && inBottomBar(e.target)) {
                 e.preventDefault();
                 e.stopPropagation();
+            }
+        }, true);
+        HTMLOUT.addEventListener('dblclick', function (e) {
+            if (inBottomBar(e.target)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
             }
         }, true);
     })();
