@@ -11,6 +11,7 @@ import cn.keking.utils.KkFileUtils;
 import cn.keking.utils.OfficeUtils;
 import cn.keking.utils.WebUtils;
 import cn.keking.web.filter.BaseUrlFilter;
+import jodd.util.StringUtil;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.poi.EncryptedDocumentException;
 import lombok.NonNull;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.io.IOException;
@@ -102,6 +104,12 @@ public class OfficeFilePreviewImpl implements FilePreview {
                     model.addAttribute("csvUrl", KkFileUtils.htmlEscape(url));
                     return CSV_FILE_PREVIEW_PAGE;
                 }
+            }
+        }
+        if (fileHandlerService.listConvertedFiles().containsKey(cacheName) && fileAttribute != null && !StringUtil.isEmpty(fileAttribute.getOutFilePath())) {
+            File file = new File(fileAttribute.getOutFilePath());
+            if (!file.exists() || file.length() == 0) {
+                forceUpdatedCache = true;
             }
         }
         if (forceUpdatedCache|| !fileHandlerService.listConvertedFiles().containsKey(cacheName) || !ConfigConstants.isCacheEnabled()) {
