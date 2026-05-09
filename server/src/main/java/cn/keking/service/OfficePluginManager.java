@@ -21,16 +21,13 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 创建文件转换器
@@ -45,8 +42,6 @@ public class OfficePluginManager {
     private final Logger logger = LoggerFactory.getLogger(OfficePluginManager.class);
 
     private LocalOfficeManager officeManager;
-    private final AtomicLong lastSuccessTime = new AtomicLong(System.currentTimeMillis());
-    private final AtomicLong consecutiveFailures = new AtomicLong(0);
 
     @Value("${office.plugin.server.ports:2001,2002}")
     private String serverPorts;
@@ -59,12 +54,6 @@ public class OfficePluginManager {
 
     @Value("${office.plugin.task.maxtasksperprocess:5}")
     private int maxTasksPerProcess;
-
-    @Value("${office.plugin.health-check.interval:60000}")
-    private long healthCheckInterval;
-
-    @Value("${office.plugin.max-idle-time:300000}")
-    private long maxIdleTime;
 
     @Autowired
     private LocalOfficeUtils localOfficeUtils;
@@ -99,84 +88,30 @@ public class OfficePluginManager {
                     .build();
             officeManager.start();
             InstalledOfficeManagerHolder.setInstance(officeManager);
-            logger.info("LibreOffice启动成功");
         } catch (Exception e) {
             logger.error("启动office组件失败，请检查office组件是否可用");
             throw e;
         }
     }
 
-    public void recordTaskSuccess() {
-        lastSuccessTime.set(System.currentTimeMillis());
-        consecutiveFailures.set(0);
-    }
-
-    public void recordTaskFailure() {
-        long failures = consecutiveFailures.incrementAndGet();
-        logger.warn("转换任务失败，连续失败次数: {}", failures);
-        
-        if (failures >= 3) {
-            logger.error("连续失败{}次，强制重启LibreOffice进程", failures);
-            restartOfficeManager();
-            consecutiveFailures.set(0);
-        }
-    }
-
-    public void killStuckProcess() {
-        logger.warn("检测到卡死进程，开始强制清理...");
-        try {
-            killProcess();
-            if (officeManager != null && officeManager.isRunning()) {
-                OfficeUtils.stopQuietly(officeManager);
-            }
-            InstalledOfficeManagerHolder.setInstance(null);
-            logger.info("卡死进程已清理");
-        } catch (Exception e) {
-            logger.error("清理卡死进程失败", e);
-        }
-        restartOfficeManager();
-    }
-
-    @Scheduled(fixedRateString = "${office.plugin.health-check.interval:60000}")
-    public void healthCheck() {
-        long now = System.currentTimeMillis();
-        long idleTime = now - lastSuccessTime.get();
-        
-        if (idleTime > maxIdleTime && officeManager != null) {
-            try {
-                if (!officeManager.isRunning()) {
-                    logger.warn("LibreOffice进程已停止但服务未响应，尝试重启...");
-                    restartOfficeManager();
-                } else {
-                    Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "ps aux | grep soffice | grep -v grep | wc -l"});
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    InputStream is = p.getInputStream();
-                    byte[] b = new byte[256];
-                    while (is.read(b) > 0) {
-                        baos.write(b);
-                    }
-                    String count = baos.toString().trim();
-                    if ("0".equals(count) || "".equals(count)) {
-                        logger.error("LibreOffice进程不存在但管理器显示运行中，触发容器重启");
-                        System.exit(1);
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("健康检查异常", e);
-            }
-        }
-    }
-
+    /**
+     * LibreOffice定时重启任务 每天2点重启
+     */
     @Scheduled(cron = "${office.restart.cron:0 0 2 * * ?}")
     public void restartOfficeManager() {
         logger.info("开始执行LibreOffice定时重启任务");
         try {
+            // 停止当前Office进程
             if (null != officeManager && officeManager.isRunning()) {
                 logger.info("停止当前Office进程");
                 OfficeUtils.stopQuietly(officeManager);
                 InstalledOfficeManagerHolder.setInstance(null);
             }
+
+            // 确保所有进程都已结束
             killProcess();
+
+            // 重新启动Office进程
             logger.info("重新启动Office进程");
             startOfficeManager();
             logger.info("LibreOffice定时重启任务执行完成");
@@ -184,6 +119,8 @@ public class OfficePluginManager {
             logger.error("LibreOffice定时重启任务执行失败", e);
         }
     }
+
+
 
     private boolean killProcess() {
         boolean flag = false;
@@ -216,7 +153,7 @@ public class OfficePluginManager {
                     flag = true;
                 }
             } else {
-                Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "ps -ef | grep soffice.bin" + " |grep -v grep | wc -l"});
+                Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "ps -ef | grep " + "soffice.bin" + " |grep -v grep | wc -l"});
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 InputStream os = p.getInputStream();
                 byte[] b = new byte[256];
@@ -244,7 +181,54 @@ public class OfficePluginManager {
         }
     }
 
-    public boolean isHealthy() {
-        return officeManager != null && officeManager.isRunning();
+
+
+    public static void main(String[] args) {
+//        File officeHome = localOfficeUtils.getDefaultOfficeHome();
+        // 1. 启动LibreOffice管理器（实际项目中建议做成单例进程池）
+        OfficeManager officeManager = LocalOfficeManager.builder().build();
+        try {
+            officeManager.start();
+
+            // 2. 定义源文件和输出文件
+//            File inputExcel = new File("/Users/lichao/IdeaProjects/file-online-preview/server/src/main/file/demo/hmsh202510管理费用.xlsx"); // 你的Excel文件
+            File inputExcel = new File("/Users/lichao/Downloads/ACC_BOOK004_003_1000000_2025-02.xls"); // 你的Excel文件
+            File outputHtml = new File("/Users/lichao/IdeaProjects/file-online-preview/server/src/main/file/test.xlsx"); // 输出的HTML文件
+
+            // 3. 核心：设置HTML转换参数，强制保留Excel样式
+            Map<String, Object> htmlProperties = new HashMap<>();
+            // 保留单元格格式、字体、颜色、合并单元格
+//            htmlProperties.put("FilterName", "HTML (Calc)");
+//            htmlProperties.put("HTML_Export_CreateIndex", false);
+//            htmlProperties.put("HTML_Export_Images", true); // 保留Excel中的图片
+//            htmlProperties.put("HTML_Export_Frame", false); // 禁用框架，适配前端渲染
+            htmlProperties.put("HTML_Export_Use_CSS", true); // 用CSS而非内联样式，便于前端调整
+            // 指定只转换当前sheet（关键参数！）
+//            htmlProperties.put("Sheet", "sheetName");
+
+
+            // 4. 执行转换
+            LocalConverter.builder()
+                    .officeManager(officeManager)
+//                    .storeProperties(htmlProperties)
+                    .build()
+                   .convert(inputExcel)
+                    .to(outputHtml)
+//                    .as(org.jodconverter.core.document.DefaultDocumentFormatRegistry.XLSX)
+//                    .as(org.jodconverter.core.document.DefaultDocumentFormatRegistry.HTML)
+//                    .withProperties(htmlProperties) // 传入样式保留参数
+                    .execute();
+
+            System.out.println("Excel转HTML完成，样式已完整保留");
+
+            // 输出文件大小信息
+            long fileSizeBytes = outputHtml.length();
+            double fileSizeMB = fileSizeBytes / (1024.0 * 1024.0);
+            System.out.println("输出文件大小: " + String.format("%.2f", fileSizeMB) + " MB");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+
 }
