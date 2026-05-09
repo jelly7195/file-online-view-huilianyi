@@ -2,25 +2,20 @@ package cn.keking.service;
 
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
-import cn.keking.utils.LocalOfficeUtils;
 import com.sun.star.document.UpdateDocMode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jodconverter.core.document.DefaultDocumentFormatRegistry;
-import org.jodconverter.core.document.DocumentFamily;
-import org.jodconverter.core.document.DocumentFormat;
-import org.jodconverter.core.office.InstalledOfficeManagerHolder;
 import org.jodconverter.core.office.OfficeException;
-import org.jodconverter.core.office.OfficeManager;
 import org.jodconverter.local.LocalConverter;
-import org.jodconverter.local.office.LocalOfficeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.*;
 
 /**
  * @author yudian-it
@@ -30,6 +25,13 @@ import java.util.Map;
 public class OfficeToPdfService {
 
     private final static Logger logger = LoggerFactory.getLogger(OfficeToPdfService.class);
+
+    private static final long CONVERSION_TIMEOUT = 120000;
+
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+
+    @Autowired
+    private OfficePluginManager officePluginManager;
 
     public void openOfficeToPDF(String inputFilePath, String outputFilePath, FileAttribute fileAttribute) throws OfficeException {
         office2pdf(inputFilePath, outputFilePath, fileAttribute);
@@ -77,22 +79,41 @@ public class OfficeToPdfService {
         builder.build().convert(inputFile).to(outputFile).execute();
     }
 
-
     public void office2pdf(String inputFilePath, String outputFilePath, FileAttribute fileAttribute) throws OfficeException {
         if (null != inputFilePath) {
             File inputFile = new File(inputFilePath);
-            // 判断目标文件路径是否为空
-            if (null == outputFilePath) {
-                // 转换后的文件路径
-                String outputFilePath_end = getOutputFilePath(inputFilePath);
-                if (inputFile.exists()) {
-                    // 找不到源文件, 则返回
-                    converterFile(inputFile, outputFilePath_end, fileAttribute);
-                }
-            } else {
-                if (inputFile.exists()) {
-                    // 找不到源文件, 则返回
-                    converterFile(inputFile, outputFilePath, fileAttribute);
+            String targetPath = (null == outputFilePath) ? getOutputFilePath(inputFilePath) : outputFilePath;
+
+            if (inputFile.exists()) {
+                long startTime = System.currentTimeMillis();
+                Future<?> future = executorService.submit(() -> {
+                    try {
+                        converterFile(inputFile, targetPath, fileAttribute);
+                    } catch (OfficeException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+                try {
+                    future.get(CONVERSION_TIMEOUT, TimeUnit.MILLISECONDS);
+                    long duration = System.currentTimeMillis() - startTime;
+                    logger.info("文件转换成功，耗时: {}ms", duration);
+                    officePluginManager.recordTaskSuccess();
+                } catch (TimeoutException e) {
+                    future.cancel(true);
+                    logger.error("文件转换超时（{}ms），强制终止", CONVERSION_TIMEOUT);
+                    officePluginManager.killStuckProcess();
+                    throw new OfficeException("转换超时，已强制终止", e);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    logger.error("转换被中断");
+                    throw new OfficeException("转换被中断", e);
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause();
+                    if (cause instanceof OfficeException) {
+                        throw (OfficeException) cause;
+                    }
+                    throw new OfficeException("转换失败", cause);
                 }
             }
         }
