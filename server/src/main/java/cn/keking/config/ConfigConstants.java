@@ -85,7 +85,7 @@ public class ConfigConstants {
     public static final String DEFAULT_PDF_PRESENTATION_MODE_DISABLE = "true";
     public static final String DEFAULT_PDF_OPEN_FILE_DISABLE = "true";
     public static final String DEFAULT_PDF_PRINT_DISABLE = "true";
-    public static final String DEFAULT_PDF_DOWNLOAD_DISABLE = "true";
+    public static final String DEFAULT_PDF_DOWNLOAD_DISABLE = "false";
     public static final String DEFAULT_PDF_BOOKMARK_DISABLE = "true";
     public static final String DEFAULT_PDF_DISABLE_EDITING = "true";
     public static final String DEFAULT_FILE_UPLOAD_DISABLE = "false";
