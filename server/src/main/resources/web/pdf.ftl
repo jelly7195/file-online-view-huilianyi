@@ -23,7 +23,9 @@
 <script type="text/javascript">
     var url = '${finalUrl}';
     var fileName = '${file.name?js_string}';
-    var downloadFileName = fileName;
+    var downloadFileName = fileName && fileName.toLowerCase().endsWith('.pdf')
+        ? fileName
+        : fileName.replace(/\.[^/.]*$/, '') + '.pdf';
     var baseUrl = window.location.origin ? window.location.origin + '/kkview/' : '${baseUrl}'.endsWith('/') ? '${baseUrl}' : '${baseUrl}' + '/';;
     if (!url.startsWith(baseUrl)) {
         url = baseUrl + 'getCorsFile?urlPath=' + encodeURIComponent(Base64.encode(url));
