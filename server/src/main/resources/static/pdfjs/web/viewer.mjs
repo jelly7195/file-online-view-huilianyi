@@ -15182,6 +15182,16 @@ const PDFViewerApplication = {
     const params = parseQueryString(queryString);
     file = params.get("file") ?? AppOptions.get("defaultUrl");
     this._contentDispositionFilename = params.get("filename") || null;
+    const downloadKey = params.get("downloadkey");
+    if (downloadKey) {
+      try {
+        const downloadInfo = JSON.parse(sessionStorage.getItem(downloadKey) || "{}");
+        if (downloadInfo.url) {
+          this._originalDownloadUrl = downloadInfo.url;
+          this._contentDispositionFilename = downloadInfo.filename || this._contentDispositionFilename;
+        }
+      } catch {}
+    }
     const disableDownload = params.get("disabledownload") === "true";
     appConfig.toolbar?.download?.classList.toggle("hidden", disableDownload);
     appConfig.secondaryToolbar?.downloadButton?.classList.toggle("hidden", disableDownload);
@@ -16029,7 +16039,13 @@ const PDFViewerApplication = {
     eventBus._on("switchannotationeditormode", evt => pdfViewer.annotationEditorMode = evt, opts);
     //禁用自动打印
     // eventBus._on("print", this.triggerPrinting.bind(this), opts);
-    eventBus._on("download", this.downloadOrSave.bind(this), opts);
+    eventBus._on("download", () => {
+      if (this._originalDownloadUrl) {
+        download(this._originalDownloadUrl, this._contentDispositionFilename || this._docFilename);
+        return;
+      }
+      this.downloadOrSave();
+    }, opts);
     eventBus._on("firstpage", () => this.page = 1, opts);
     eventBus._on("lastpage", () => this.page = this.pagesCount, opts);
     eventBus._on("nextpage", () => pdfViewer.nextPage(), opts);
