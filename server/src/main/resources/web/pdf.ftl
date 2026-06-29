@@ -21,7 +21,7 @@
 </body>
 
 <script type="text/javascript">
-    var url = '${finalUrl}';
+    var url = '${finalUrl?js_string}';
     var fileName = '${file.name?js_string}';
     var downloadFileName = fileName;
     var originalDownloadUrl = '${file.url?js_string}';
