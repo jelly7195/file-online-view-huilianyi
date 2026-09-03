@@ -24,6 +24,7 @@ public class FileAttribute {
     private String cacheName;
     private String outFilePath;
     private String originFilePath;
+    private String sourceFileName;
     private String cacheListName;
     private boolean isHtmlView = false;
 
@@ -131,6 +132,9 @@ public class FileAttribute {
     public String getOriginFilePath() {
         return originFilePath;
     }
+    public String getSourceFileName() {
+        return sourceFileName;
+    }
     public boolean isHtmlView() {
         return isHtmlView;
     }
@@ -146,6 +150,9 @@ public class FileAttribute {
     }
     public void setOriginFilePath(String originFilePath) {
         this.originFilePath = originFilePath;
+    }
+    public void setSourceFileName(String sourceFileName) {
+        this.sourceFileName = sourceFileName;
     }
     public void setHtmlView(boolean isHtmlView) {
         this.isHtmlView = isHtmlView;

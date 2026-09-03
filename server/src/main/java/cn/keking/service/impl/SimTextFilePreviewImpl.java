@@ -34,16 +34,17 @@ public class SimTextFilePreviewImpl implements FilePreview {
     @Override
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
         String fileName = fileAttribute.getName();
+        String cacheName = fileAttribute.getSourceFileName() == null ? fileName : fileAttribute.getCacheName();
         boolean forceUpdatedCache=fileAttribute.forceUpdatedCache();
         String filePath = fileAttribute.getOriginFilePath();
-        if (forceUpdatedCache || !fileHandlerService.listConvertedFiles().containsKey(fileName) || !ConfigConstants.isCacheEnabled()) {
+        if (forceUpdatedCache || !fileHandlerService.listConvertedFiles().containsKey(cacheName) || !ConfigConstants.isCacheEnabled()) {
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             }
             filePath = response.getContent();
             if (ConfigConstants.isCacheEnabled()) {
-                fileHandlerService.addConvertedFile(fileName, filePath);  //加入缓存
+                fileHandlerService.addConvertedFile(cacheName, filePath);  //加入缓存
             }
             try {
                 String  fileData = HtmlUtils.htmlEscape(textData(filePath,fileName));
@@ -53,7 +54,7 @@ public class SimTextFilePreviewImpl implements FilePreview {
             }
             return TXT_FILE_PREVIEW_PAGE;
         }
-        String cachedFilePath = fileHandlerService.getConvertedFile(fileName);
+        String cachedFilePath = fileHandlerService.getConvertedFile(cacheName);
         if (cachedFilePath != null) {
             filePath = cachedFilePath;
         }

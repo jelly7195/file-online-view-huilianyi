@@ -171,7 +171,9 @@ public class DownloadUtils {
      */
     private static String getRelFilePath(String fileName, FileAttribute fileAttribute) {
         String type = fileAttribute.getSuffix();
-        if (null == fileName) {
+        if (StringUtils.hasText(fileAttribute.getSourceFileName())) {
+            fileName = fileAttribute.getSourceFileName();
+        } else if (null == fileName) {
             UUID uuid = UUID.randomUUID();
             fileName = uuid + "." + type;
         } else { // 文件后缀不一致时，以type为准(针对simText【将类txt文件转为txt】)

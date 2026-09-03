@@ -38,9 +38,11 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
@@ -54,6 +56,9 @@ public class FileHandlerService implements InitializingBean {
 
     private static final String PDF2JPG_IMAGE_FORMAT = ".jpg";
     private static final String PDF_PASSWORD_MSG = "password";
+    private static final List<String> ATTACHMENT_PREVIEW_TYPES = Arrays.asList(
+            "pdf", "txt", "csv", "xls", "xlsx", "doc", "docx", "ppt", "pptx", "jfif"
+    );
     private final Logger logger = LoggerFactory.getLogger(FileHandlerService.class);
     private final String fileDir = ConfigConstants.getFileDir();
     private final CacheService cacheService;
@@ -495,18 +500,28 @@ public class FileHandlerService implements InitializingBean {
         originFileName = KkFileUtils.htmlEscape(originFileName);  //文件名处理
         logger.info("originFileName：{}",originFileName);
 
+        String sourceFileName = originFileName;
+        String sourceIdentity = req == null ? null : req.getParameter("attachmentOID");
+        if (!StringUtils.hasText(sourceIdentity)) {
+            sourceIdentity = WebUtils.getUrlParameterReg(url, "attachmentOID");
+        }
+        if (!isCompressFile && StringUtils.hasText(sourceIdentity) && ATTACHMENT_PREVIEW_TYPES.contains(suffix.toLowerCase())) {
+            sourceFileName = UUID.nameUUIDFromBytes(sourceIdentity.getBytes(StandardCharsets.UTF_8)) + "." + suffix;
+            attribute.setSourceFileName(sourceFileName);
+        }
+
 //        boolean isHtmlView = suffix.equalsIgnoreCase("xls") || suffix.equalsIgnoreCase("xlsx") || suffix.equalsIgnoreCase("csv") || suffix.equalsIgnoreCase("xlsm") || suffix.equalsIgnoreCase("xlt") || suffix.equalsIgnoreCase("xltm") || suffix.equalsIgnoreCase("et") || suffix.equalsIgnoreCase("ett") || suffix.equalsIgnoreCase("xlam");
         //xlsx 和 xls 格式不走html
         boolean isHtmlView = suffix.equalsIgnoreCase("csv") || suffix.equalsIgnoreCase("xlsm") || suffix.equalsIgnoreCase("xlt") || suffix.equalsIgnoreCase("xltm") || suffix.equalsIgnoreCase("et") || suffix.equalsIgnoreCase("ett") || suffix.equalsIgnoreCase("xlam");
         String cacheFilePrefixName = null;
         try {
-            cacheFilePrefixName = originFileName.substring(0, originFileName.lastIndexOf(".")) + suffix + "."; //这里统一文件名处理 下面更具类型 各自添加后缀
+            cacheFilePrefixName = sourceFileName.substring(0, sourceFileName.lastIndexOf(".")) + suffix + "."; //这里统一文件名处理 下面更具类型 各自添加后缀
         } catch (Exception e) {
             logger.error("获取文件名后缀错误：", e);
         }
-        String cacheFileName = this.getCacheFileName(type, originFileName, cacheFilePrefixName, isHtmlView, isCompressFile);
+        String cacheFileName = this.getCacheFileName(type, sourceFileName, cacheFilePrefixName, isHtmlView, isCompressFile);
         outFilePath = fileDir + cacheFileName;
-        originFilePath = isCompressFile ? fileDir + compressFileKey + "/" + originFileName : fileDir + originFileName;
+        originFilePath = isCompressFile ? fileDir + compressFileKey + "/" + originFileName : fileDir + sourceFileName;
         String cacheListName = cacheFilePrefixName + "ListName";  //文件列表缓存文件名
         attribute.setType(type);
         attribute.setName(originFileName);
